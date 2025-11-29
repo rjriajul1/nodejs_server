@@ -1,29 +1,62 @@
 import http, { IncomingMessage, Server, ServerResponse } from "http";
 // import path from "path";
 import config from "./config";
-import  { RouterHandler, routes } from "./helper/RouteHandle";
-import "./routes"
+import { RouterHandler, routes } from "./helper/RouteHandle";
+import "./routes";
+
+function findDynamicRoute(method: string, url: string) {
+  const methodMap = routes.get(method);
+  if (!methodMap) return null;
+
+  for (const [routePath, handler] of methodMap.entries()) {
+    const routeParts = routePath.split("/");
+    const urlParts = url.split("/");
+    if (routeParts.length !== urlParts.length) continue;
+
+    const params: any = {};
+    let metched = true;
+
+    for (let i = 0; i < routeParts.length; i++) {
+      if (routeParts[i]?.startsWith(":")) {
+        params[routeParts[i]?.substring(1)!] = urlParts[i];
+      } else if (routeParts[i] !== urlParts[i]) {
+        metched = false;
+        break;
+      }
+    }
+
+    if (metched) {
+      return { handler, params };
+    }
+  }
+
+  return null;
+}
 
 const server: Server = http.createServer(
   (req: IncomingMessage, res: ServerResponse) => {
     console.log("server is runnign...");
 
-    const method = req.method?.toUpperCase() || ""
-    const path = req.url || ""
-    const methodMap = routes.get(method)
-    const handler:RouterHandler | undefined = methodMap?.get(path)
-     if(handler){
-        handler(req,res)
-     }else{
-         res.writeHead(404, {"content-type": "application/json"});
-         res.end(
-          JSON.stringify({
-            success: false,
-            message: "Route is not found !!",
-            path
-          })
-         )
-     }
+    const method = req.method?.toUpperCase() || "";
+    const path = req.url || "";
+    const methodMap = routes.get(method);
+    const handler: RouterHandler | undefined = methodMap?.get(path);
+    if (handler) {
+      handler(req, res);
+    } else if (findDynamicRoute(method, path)) {
+      const match = findDynamicRoute(method, path);
+      (req as any).params = match?.params;
+      match?.handler(req, res);
+    } else {
+      res.writeHead(404, { "content-type": "application/json" });
+      res.end(
+        JSON.stringify({
+          success: false,
+          message: "Route is not found !!",
+          path,
+        })
+      );
+    }
     //  root route
     // if (req.url == "/" && req.method == "GET") {
     //   res.writeHead(200, { "content-type": "application/json" });
@@ -35,7 +68,6 @@ const server: Server = http.createServer(
     //   );
     // }
 
-    
     //  health route
     // if (req.url == "/api" && req.method == "GET") {
     //   res.writeHead(200, { "content-type": "application/json" });
