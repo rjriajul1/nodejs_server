@@ -1,3 +1,5 @@
+import { write } from "fs"
+import { readUsers, wirteUsers } from "../helper/fileDb"
 import parseBody from "../helper/parse-body"
 import addRoutes from "../helper/RouteHandle"
 import sendJson from "../helper/send-json"
@@ -28,5 +30,12 @@ addRoutes("GET", "/api", (req,res)=>{
 
 addRoutes("POST", "/api/users", async(req,res)=>{
     const body = await parseBody(req);
+    const users = readUsers()
+    const newUser = {
+        id: Date.now(),
+        ...body,
+    };
+    users.push(newUser)
+    wirteUsers(users)
     sendJson(res, 201, {success: true,data:body})
 })
