@@ -39,3 +39,35 @@ addRoutes("POST", "/api/users", async(req,res)=>{
     wirteUsers(users)
     sendJson(res, 201, {success: true,data:body})
 })
+
+
+addRoutes("PUT", "/api/users/:id", async(req,res)=>{
+  const {id} = (req as any).params;
+  const body = await parseBody(req);
+
+  const users = readUsers()
+
+  const index = users.findIndex((user: any)=> user.id == id);
+
+  if(index == -1) {
+    sendJson(res, 404, {
+      success: false,
+      message: "user not found "
+    })
+  }
+
+  users[index] = {
+    ...users[index],
+    ...body
+  };
+
+  wirteUsers(users);
+
+  sendJson(res, 202, {
+    success: true,
+    message: `id ${id} user updated`,
+    data: users[index]
+  })
+
+})
+
